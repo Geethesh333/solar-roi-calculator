@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Solar ROI Calculator with Detailed Inputs</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin:0; background:#eef6f5; color:#222; }
+    header { background:#27ae60; color:#fff; text-align:center; padding:1.5rem 0; }
+    header h1 { margin:0; font-size:2.2rem; }
+    main { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+    section { background:#fff; border-radius:10px; box-shadow:0 3px 10px rgba(0,0,0,0.1); padding:1.5rem; margin-bottom:2rem; }
+    h2 { color:#219653; margin-top:0; }
+    label { display:block; margin-top:1rem; font-weight:600; }
+    input[type="number"], select, input[type="text"] {
+      width:100%; padding:0.5rem; margin-top:0.3rem; border-radius:5px;
+      border:1px solid #ccc; font-size:1rem;
+    }
+    button {
+      background:#27ae60; color:#fff; border:none; padding:0.7rem 1.5rem;
+      font-size:1.1rem; border-radius:6px; margin-top:1.5rem; cursor:pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover { background:#219150; }
+    .results p { font-size:1.1rem; margin:0.6rem 0; font-weight:600; }
+    canvas { max-width: 100%; margin-top:1rem; }
+    footer { text-align:center; padding:1rem 0; color:#777; font-size:0.9rem; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Solar ROI Calculator with Location & Incentives</h1>
+</header>
+<main>
+  <section>
+    <h2>Enter Your Details</h2>
+    <form id="roiForm">
+      <label for="billAmount">Current Electricity Bill Amount (₹):</label>
+      <input type="number" id="billAmount" name="billAmount" min="0" step="0.01" placeholder="E.g. 1200" required />
+      <label for="billType">Bill Frequency:</label>
+      <select id="billType" name="billType" required>
+        <option value="monthly">Monthly</option>
+        <option value="annual">Annual</option>
+      </select>
+      <label for="location">Location (City/Region):</label>
+      <input type="text" id="location" name="location" placeholder="E.g. Bengaluru" required/>
+      <label for="roofSize">Roof Size / Solar System Capacity (kW):</label>
+      <input type="number" id="roofSize" name="roofSize" min="0.5" max="20" step="0.1" value="5" required />
+      <label for="installationCost">Installation Cost (₹):</label>
+      <input type="number" id="installationCost" name="installationCost" min="50000" step="1000" placeholder="Leave empty for default" />
+      <label for="govtSubsidy">Government Subsidies/Incentives (₹) (optional):</label>
+      <input type="number" id="govtSubsidy" name="govtSubsidy" min="0" step="1000" placeholder="Enter if applicable" />
+      <button type="submit">Calculate ROI</button>
+    </form>
+  </section>
+  <section class="results" style="display:none;">
+    <h2>Your Solar Investment Results</h2>
+    <p id="paybackPeriod"></p>
+    <p id="annualSavings"></p>
+    <p id="roiPercentage"></p>
+    <canvas id="dynamicChart"></canvas>
+  </section>
+  <section>
+    <h2>About Solar Investment</h2>
+    <p>Using your location helps estimate sunlight availability, which influences energy production and your savings.</p>
+    <p>Government subsidies reduce upfront cost, accelerating your ROI and payback period.</p>
+  </section>
+  <section>
+    <h2>Contact Our Solar Experts</h2>
+    <p>Get personalized consultation to maximize your solar benefits and ensure the best system for your needs.</p>
+    <button onclick="alert('Contact form coming soon!')">Contact Us</button>
+  </section>
+</main>
+<footer>
+  &copy; 2025 Solar ROI Calculator Project
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const form = document.getElementById('roiForm');
+  const resultsSection = document.querySelector('.results');
+  const paybackPeriodP = document.getElementById('paybackPeriod');
+  const annualSavingsP = document.getElementById('annualSavings');
+  const roiPercentageP = document.getElementById('roiPercentage');
+  const chartCanvas = document.getElementById('dynamicChart').getContext('2d');
+  let dynamicChart = null;
+
+  const sunlightHoursByLocation = {
+    'bengaluru': 5.5,
+    'mumbai': 5.2,
+    'delhi': 5.8,
+    'chennai': 5.3,
+    'hyderabad': 5.4,
+    'kolkata': 4.9,
+    'default': 5.0
+  };
+
+  form.addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const billAmount = parseFloat(form.billAmount.value);
+    const billType = form.billType.value;
+    const locationInput = form.location.value.trim().toLowerCase();
+    const roofSize = parseFloat(form.roofSize.value);
+    let installationCost = parseFloat(form.installationCost.value);
+    const govtSubsidy = parseFloat(form.govtSubsidy.value) || 0;
+
+    const costPerKw = 60000; // ₹ per kW average installation cost in India
+    if (isNaN(installationCost)) {
+      installationCost = roofSize * costPerKw;
+    }
+
+    const annualBill = billType === 'monthly' ? billAmount * 12 : billAmount;
+
+    const sunlightHours = sunlightHoursByLocation[locationInput] || sunlightHoursByLocation['default'];
+
+    const systemEfficiency = 0.75;
+    const annualProduction = roofSize * sunlightHours * 365 * systemEfficiency;
+
+    const electricityRate = annualBill / annualProduction;
+
+    const annualSavings = annualProduction * electricityRate;
+
+    const netInvestment = installationCost - govtSubsidy;
+
+    const paybackPeriod = netInvestment / annualSavings;
+
+    const netProfit = annualSavings * 5 - netInvestment;
+
+    const roiPercentage = (netProfit / netInvestment) * 100;
+
+    paybackPeriodP.textContent = `Estimated Payback Period: ${paybackPeriod.toFixed(2)} years`;
+    annualSavingsP.textContent = `Estimated Annual Savings: ₹${annualSavings.toFixed(0)}`;
+    roiPercentageP.textContent = `Estimated ROI over 5 years: ${roiPercentage.toFixed(2)}%`;
+
+    resultsSection.style.display = 'block';
+
+    const labels = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5'];
+    const dataSavings = [];
+    let cumulativeSavings = 0;
+    for(let i=0; i<5; i++) {
+      cumulativeSavings += annualSavings;
+      dataSavings.push(cumulativeSavings);
+    }
+
+    if(dynamicChart) dynamicChart.destroy();
+
+    dynamicChart = new Chart(chartCanvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Cumulative Savings (₹)',
+          data: dataSavings,
+          backgroundColor: 'rgba(39, 174, 96, 0.2)',
+          borderColor: 'rgba(39, 174, 96, 1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 6
+        }]
+      },
+      options: {
+        scales: { y: { beginAtZero: true } },
+        plugins: { legend: { display: true } }
+      }
+    });
+  });
+</script>
+</body>
+</html>
